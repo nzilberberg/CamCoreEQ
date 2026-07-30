@@ -449,7 +449,7 @@
     </div>
     <div id="statusPanels" class="spanels" style="margin-top:0"></div>
   </div>
-  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b216 · play/pause latency fix: LMS port cached after first probe (a firewall-dropped probe of the idle port cost ~1s on EVERY transport/status call), optimistic glyph + early confirm poll · b215 · web updates apply IN PLACE at launch (no restart toast); a build published mid-session lights an Apply-update button in Settings · b214 · Settings gains an App section: shell + web version and an on-demand "Update app" button (camcoreeq://update, shell v5+) · b213 · a WebView with no injected shell version now labels itself "OLD shell (pre-v3)" instead of masquerading as a browser · b212 · viewport declared as the 980px design width, so every client lays out like a desktop browser and scales to fit (the measured app-vs-Firefox divergence) · b211 · native self-update: the app now downloads and installs a newer APK itself (one tap), required updates route automatically · b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
+  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b217 · fixed the b216 flip-flop: optimistic glyph now HOLDS until a status snapshot requested AFTER the tap arrives (the 1s render loop was repainting stale state over it) · b216 · play/pause latency fix: LMS port cached after first probe (a firewall-dropped probe of the idle port cost ~1s on EVERY transport/status call), optimistic glyph + early confirm poll · b215 · web updates apply IN PLACE at launch (no restart toast); a build published mid-session lights an Apply-update button in Settings · b214 · Settings gains an App section: shell + web version and an on-demand "Update app" button (camcoreeq://update, shell v5+) · b213 · a WebView with no injected shell version now labels itself "OLD shell (pre-v3)" instead of masquerading as a browser · b212 · viewport declared as the 980px design width, so every client lays out like a desktop browser and scales to fit (the measured app-vs-Firefox divergence) · b211 · native self-update: the app now downloads and installs a newer APK itself (one tap), required updates route automatically · b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
 </div>
 
 <script>
@@ -1335,7 +1335,14 @@ window.EQ_setHost = function (h) {
   // the glyph if the optimism was wrong.
   function tcmd(c){
     if(c==="play"||c==="pause"){
-      window.__playMode=(c==="play")?"play":"pause";
+      // Optimistic HOLD, not just an optimistic paint: the status module's 1s render
+      // loop repaints the glyph from its cached snapshot, so a bare flip here was
+      // overwritten within a second and the button flip-flopped. __optMode/__optAt
+      // make the render loop keep showing the tapped state until a snapshot
+      // REQUESTED AFTER the tap (or a 5s timeout) supersedes it.
+      window.__optMode=(c==="play")?"play":"pause";
+      window.__optAt=Date.now();
+      window.__playMode=window.__optMode;
       var tp=document.getElementById("tPlay");
       if(tp)tp.innerHTML=(c==="play")?"&#9208;":"&#9654;";
     }
@@ -1906,7 +1913,12 @@ window.EQ_setHost = function (h) {
       else{mc.className="mclip";mc.textContent="CLIP";}}
     var _lt=document.getElementById("limTxt"),_la=document.getElementById("limAct");
     if(_lt&&_la){if(!limOn){_lt.style.color="";_la.textContent="";}else if(lim){_lt.style.color="var(--amber)";_la.style.color="var(--amber)";_la.textContent="active";}else{_lt.style.color="";_la.textContent="";}}}
-  function poll(){fetch(STATUS_URL).then(function(r){return r.json();}).then(function(o){sys=o;sysErr=false;lastStatus=Date.now();}).catch(function(){sysErr=true;});}
+  // sysReqAt = when the CURRENTLY HELD status snapshot was REQUESTED (not received).
+  // The request time is what decides whether a snapshot can override an optimistic
+  // transport tap: a poll already in flight when the user tapped will land AFTER the
+  // tap but still carry PRE-tap state -- response time cannot tell those apart.
+  var sysReqAt=0;
+  function poll(){var reqAt=Date.now();fetch(STATUS_URL).then(function(r){return r.json();}).then(function(o){sys=o;sysReqAt=reqAt;sysErr=false;lastStatus=Date.now();}).catch(function(){sysErr=true;});}
   function box(title,rows){return '<div class="spanel"><h4>'+title+'</h4>'+rows.filter(Boolean).map(function(r){return '<div class="kv"><span class="k">'+r[0]+'</span><b class="'+(r[2]||"")+(r[3]?(" "+r[3]):"")+'">'+esc(r[1])+'</b></div>';}).join("")+'</div>';}
   function song(){var o={},s=sys.song&&sys.song.result&&sys.song.result.songinfo_loop;if(s)s.forEach(function(e){for(var k in e)o[k]=e[k];});return o;}
   function srcType(u){if(!u)return null;u=(""+u).toLowerCase();if(u.indexOf("soundcloud")>=0)return "SoundCloud";if(u.indexOf("qobuz")>=0)return "Qobuz";if(u.indexOf("spotify")>=0)return "Spotify";if(u.indexOf("tidal")>=0||u.indexOf("wimp")>=0)return "Tidal";if(u.indexOf("pandora")>=0)return "Pandora";if(u.indexOf("plex")>=0)return "Plex";if(u.indexOf("airplay")>=0)return "AirPlay";if(u.indexOf("file:")===0)return "Local file";if(u.indexOf("http")===0)return "Radio / stream";return null;}
@@ -1942,7 +1954,18 @@ window.EQ_setHost = function (h) {
     var srcBr=_tm?_tm[1].trim():brDisp;
     var transcode=_tm?_tm[2].trim().replace(/^(\d+\s*kbps)\s+(.+)$/i,"$2 $1"):"none";
     var pmode={play:"playing",pause:"paused",stop:"stopped"}[L.mode]||L.mode||"unknown";
-    window.__playMode=L.mode; var _tp=document.getElementById("tPlay"); if(_tp)_tp.innerHTML=(L.mode==="play")?"&#9208;":"&#9654;";   // reflect play/pause on the transport button
+    // Play/pause glyph with an OPTIMISTIC HOLD. This render loop runs every 1s from
+    // the cached snapshot, and unconditionally writing L.mode here is what made a tap
+    // flip-flop: optimistic flip -> stale repaint flips it back -> fresh poll flips it
+    // forward. The hold shows the tapped state until a snapshot REQUESTED AFTER the
+    // tap arrives (sysReqAt > __optAt -- an in-flight poll cannot clear it with
+    // pre-tap state), or until a 5s timeout so a failed command cannot lie forever.
+    var _m=L.mode;
+    if(window.__optMode!=null){
+      if(sysReqAt>window.__optAt || Date.now()-window.__optAt>5000) window.__optMode=null;
+      else _m=window.__optMode;
+    }
+    window.__playMode=_m; var _tp=document.getElementById("tPlay"); if(_tp)_tp.innerHTML=(_m==="play")?"&#9208;":"&#9654;";   // reflect play/pause on the transport button
     var eng=(dsp.state==="Running"||sys.cdsp), bypOn=!!(window.__bypass&&window.__bypass!=="off"), codec=codecName(SG.type);
     npTick(L.time);updateNpBox(SG,L,codec,srcBr);   // feed the album-art hover box from the same computed fields (runs every 1s → elapsed ticks)
     if(window.__lastApply&&window.__lastApply!==lastApplySeen){lastApplySeen=window.__lastApply;clipBase=dsp.clipped||0;}
