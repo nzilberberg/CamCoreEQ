@@ -120,13 +120,32 @@ public class MainActivity extends Activity {
         setContentView(root);
         web.loadUrl(server.origin() + "/");
 
-        // Silent OTA: if a newer build is published, store it and use it on next launch.
-        // Never swaps under the user mid-session -- an EQ editor reloading itself while
-        // someone is dragging a band would lose their edit.
+        // Web OTA, the TomeRoam way. At LAUNCH a found update applies IN PLACE -- the
+        // loopback server already serves the committed copy, so one reload lands it;
+        // seconds after open the user has nothing in progress to lose, and telling
+        // them to restart the app they just started was strictly worse UX.
+        WebUpdater.checkAsync(this, (newBuild, message) -> runOnUiThread(() -> {
+            if (newBuild != null) web.loadUrl(server.origin() + "/");
+        }));
+    }
+
+    // A build published WHILE the app is open is found on the next return to the app.
+    // It is NOT auto-applied -- the user may be mid-edit -- it lights the Settings
+    // "Apply update" button instead (stagedWebBuild/applyWebUpdate on the bridge),
+    // which is exactly how TomeRoam's Options button behaves.
+    private String stagedWeb = null;
+    private boolean firstResume = true;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (firstResume) { firstResume = false; return; }   // onCreate's check covers launch
+        if (web == null) return;
         WebUpdater.checkAsync(this, (newBuild, message) -> runOnUiThread(() -> {
             if (newBuild != null) {
+                stagedWeb = newBuild;
                 Toast.makeText(this, "CamCoreEQ " + newBuild
-                        + " downloaded - restart the app to use it", Toast.LENGTH_LONG).show();
+                        + " ready - apply it in Settings", Toast.LENGTH_LONG).show();
             }
         }));
     }
@@ -141,6 +160,21 @@ public class MainActivity extends Activity {
         @android.webkit.JavascriptInterface
         public void updateApp() {
             runOnUiThread(() -> ApkUpdater.startUpdate(MainActivity.this));
+        }
+
+        // A web build committed while this session was already running (found by the
+        // onResume re-check), or "" when the running page is current.
+        @android.webkit.JavascriptInterface
+        public String stagedWebBuild() { return stagedWeb == null ? "" : stagedWeb; }
+
+        // Apply it in place: the loopback server already serves the committed copy,
+        // so a reload is the whole operation. Tap = consent, same as TomeRoam.
+        @android.webkit.JavascriptInterface
+        public void applyWebUpdate() {
+            runOnUiThread(() -> {
+                stagedWeb = null;
+                web.loadUrl(server.origin() + "/");
+            });
         }
     }
 

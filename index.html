@@ -265,7 +265,7 @@
         <div class="setrow"><button id="setDiag" class="sm">Send diagnostics to player</button><span class="spacer"></span><button id="setDiagCopy" class="sm">Copy</button></div>
         <textarea id="setDiagOut" readonly rows="4" spellcheck="false" style="display:none;width:100%;box-sizing:border-box;margin-top:2px;background:#0e1116;color:var(--muted);border:1px solid var(--line);border-radius:6px;font:11px/1.45 ui-monospace,Consolas,monospace;padding:7px;resize:vertical;-webkit-user-select:text;user-select:text"></textarea>
         <div class="seth" id="setAppHead" style="display:none">App</div>
-        <div class="setrow" id="setAppRow" style="display:none"><span class="lbl" id="setAppVer"></span><span class="spacer"></span><button id="setAppUpd" class="sm">Update app</button></div>
+        <div class="setrow" id="setAppRow" style="display:none"><span class="lbl" id="setAppVer"></span><span class="spacer"></span><button id="setWebUpd" class="sm" style="display:none">Apply update</button><button id="setAppUpd" class="sm">Update app</button></div>
       </div>
       <div class="modalf"><span id="setMsg" class="modalmsg"></span><span class="spacer"></span><button id="setClose" class="sm">Close</button></div>
     </div>
@@ -449,7 +449,7 @@
     </div>
     <div id="statusPanels" class="spanels" style="margin-top:0"></div>
   </div>
-  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b214 · Settings gains an App section: shell + web version and an on-demand "Update app" button (camcoreeq://update, shell v5+) · b213 · a WebView with no injected shell version now labels itself "OLD shell (pre-v3)" instead of masquerading as a browser · b212 · viewport declared as the 980px design width, so every client lays out like a desktop browser and scales to fit (the measured app-vs-Firefox divergence) · b211 · native self-update: the app now downloads and installs a newer APK itself (one tap), required updates route automatically · b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
+  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b215 · web updates apply IN PLACE at launch (no restart toast); a build published mid-session lights an Apply-update button in Settings · b214 · Settings gains an App section: shell + web version and an on-demand "Update app" button (camcoreeq://update, shell v5+) · b213 · a WebView with no injected shell version now labels itself "OLD shell (pre-v3)" instead of masquerading as a browser · b212 · viewport declared as the 980px design width, so every client lays out like a desktop browser and scales to fit (the measured app-vs-Firefox divergence) · b211 · native self-update: the app now downloads and installs a newer APK itself (one tap), required updates route automatically · b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
 </div>
 
 <script>
@@ -1768,6 +1768,13 @@ window.EQ_setHost = function (h) {
     document.getElementById("setAppVer").textContent=
       (n!=null?("Shell v"+n):"OLD shell (pre-v3)")+" · web "+tag;
     document.getElementById("setAppUpd").style.display=(br&&br.updateApp)?"":"none";
+    // A web build committed while this session was already open (the shell's onResume
+    // re-check found it). Applying is just a reload -- the shell already serves it.
+    var sw="";
+    if(br&&br.stagedWebBuild){try{sw=br.stagedWebBuild()||"";}catch(e){}}
+    var wb=document.getElementById("setWebUpd");
+    wb.style.display=(sw&&br&&br.applyWebUpdate)?"":"none";
+    if(sw)wb.textContent="Apply update ("+sw+")";
   };
   (function(){var b=document.getElementById("setAppUpd");if(!b)return;
     b.onclick=function(){
@@ -1775,6 +1782,12 @@ window.EQ_setHost = function (h) {
       if(!(br&&br.updateApp))return;               // button is hidden in that case anyway
       document.getElementById("setMsg").textContent="Fetching the latest app…";
       try{br.updateApp();}catch(e){document.getElementById("setMsg").textContent="Update failed to start.";}
+    };})();
+  (function(){var b=document.getElementById("setWebUpd");if(!b)return;
+    b.onclick=function(){
+      var br=window.CamCoreEQNative;
+      if(!(br&&br.applyWebUpdate))return;
+      try{br.applyWebUpdate();}catch(e){document.getElementById("setMsg").textContent="Could not apply the update.";}
     };})();
   document.getElementById("menuBtn").onclick=function(){syncSettingsUI();window.EQ_appRow&&window.EQ_appRow();document.getElementById("setMsg").textContent="";document.getElementById("settingsModal").style.display="flex";};   // gear opens Settings directly (dropdown retired); EQ_appRow re-evaluated here because EQ_NATIVE arrives after page load
   function closeSettings(){document.getElementById("settingsModal").style.display="none";}
