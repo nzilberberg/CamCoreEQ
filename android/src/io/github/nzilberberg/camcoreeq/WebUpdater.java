@@ -30,7 +30,7 @@ final class WebUpdater {
     private static final int TIMEOUT_MS = 8000;
 
     /** The shell's own version. Raise it, versionCode and build.json's nativeVersion together. */
-    static final int NATIVE_VERSION = 3;
+    static final int NATIVE_VERSION = 4;
 
     interface Listener {
         /** Called on a worker thread. newBuild is null when nothing changed. */
@@ -40,6 +40,13 @@ final class WebUpdater {
     private WebUpdater() {}
 
     static void checkAsync(final Context ctx, final Listener l) {
+        // Route native updates like the sibling TomeRoam project, where this flow is
+        // device-proven: a HARD prompt when the published web build needs a newer shell
+        // (the web build is then NOT applied -- the app keeps working on its current
+        // one), a SOFT dismissible prompt when a newer shell merely exists, and in the
+        // ordinary case the web build updates silently with no dialog at all.
+        final android.app.Activity act =
+                (ctx instanceof android.app.Activity) ? (android.app.Activity) ctx : null;
         new Thread(() -> {
             try {
                 String manJson = new String(get(BASE + "build.json"), "UTF-8");
@@ -47,14 +54,25 @@ final class WebUpdater {
                 String local = WebStore.currentBuild(ctx);
 
                 if (remote.isEmpty()) { l.onResult(null, "no build id in the published manifest"); return; }
-                if (remote.equals(local)) { l.onResult(null, "up to date (" + local + ")"); return; }
 
+                int remoteNative = WebStore.intField(manJson, "nativeVersion", NATIVE_VERSION);
                 int floor = WebStore.intField(manJson, "minNativeVersion", 1);
+
                 if (floor > NATIVE_VERSION) {
+                    // The new web build cannot run on this shell: route straight to the
+                    // APK downloader and leave the current web build in place.
+                    if (act != null) act.runOnUiThread(() -> ApkUpdater.promptRequired(act));
                     l.onResult(null, "build " + remote + " needs app version " + floor
-                            + "; this app is " + NATIVE_VERSION + ". Install the newer APK.");
+                            + "; this app is " + NATIVE_VERSION);
                     return;
                 }
+                if (remoteNative > NATIVE_VERSION && act != null) {
+                    // A newer shell exists but is not required: offer it once, and still
+                    // take the web update below.
+                    act.runOnUiThread(() -> ApkUpdater.prompt(act));
+                }
+
+                if (remote.equals(local)) { l.onResult(null, "up to date (" + local + ")"); return; }
 
                 byte[] doc = get(BASE + "index.html");
                 // A document that does not identify itself is not installed. Cheap, but it

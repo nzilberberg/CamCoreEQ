@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="io.github.nzilberberg.camcoreeq"
-    android:versionCode="4"
-    android:versionName="1.0.3-b210">
+    android:versionCode="5"
+    android:versionName="1.0.4-b211">
 
   <!-- INTERNET covers both the LAN calls to the player and the OTA check. -->
   <uses-permission android:name="android.permission.INTERNET"/>
+  <!-- Native self-update: hand the downloaded APK to the system installer. -->
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
   <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="35"/>
 
@@ -25,5 +27,12 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
+
+    <!-- Exposes ONLY the downloaded update APK to the system installer. -->
+    <provider
+        android:name=".ApkFileProvider"
+        android:authorities="io.github.nzilberberg.camcoreeq.fileprovider"
+        android:exported="false"
+        android:grantUriPermissions="true"/>
   </application>
 </manifest>
