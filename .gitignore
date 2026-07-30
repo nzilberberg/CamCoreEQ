@@ -1,0 +1,5 @@
+android/build/
+*.apk
+*.idsig
+keystore-password.txt
+*.keystore

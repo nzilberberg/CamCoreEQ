@@ -1,0 +1,17 @@
+devices:
+  samplerate: 44100
+  chunksize: 2048
+  queuelimit: 4
+  capture:
+    type: Stdin
+    channels: 2
+    format: S16_LE
+  playback:
+    type: Alsa
+    channels: 2
+    device: "hw:CARD=Pro,DEV=0"
+    format: S32_LE
+filters: {}
+mixers: {}
+pipeline: []
+processors: {}
