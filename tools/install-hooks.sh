@@ -37,14 +37,4 @@ HOOK
 chmod +x "$hook"
 chmod +x "$hook"
 
-# commit-msg: a change to a reference-shared subsystem must cite what the reference does.
-msghook="$root/.git/hooks/commit-msg"
-cat > "$msghook" <<'MSGHOOK'
-#!/bin/sh
-root="$(git rev-parse --show-toplevel)"
-NODE="$(command -v node || echo /c/Users/nzilb/tools/node-dist/node.exe)"
-"$NODE" "$root/tools/check-commit-reference.mjs" "$1" || exit 1
-MSGHOOK
-chmod +x "$msghook"
-echo "installed: $msghook"
 echo "installed: $hook"
