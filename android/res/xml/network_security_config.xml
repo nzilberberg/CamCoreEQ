@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext HTTP is REQUIRED here, not a shortcut. This app must reach:
+    its own loopback document server   http://127.0.0.1:8731
+    the player's CGI endpoints         http://PLAYER:8080
+    CamillaDSP's control socket        ws://PLAYER:1234
+  CamillaDSP has no TLS listener and piCorePlayer's busybox httpd serves plain HTTP,
+  so there is nothing to upgrade to.
+
+  This cannot be narrowed by domain. The player's address is entered by the user at
+  runtime, and network-security-config accepts only literal domains: no CIDR ranges
+  and no wildcards. Pinning a domain here would break every user whose player has a
+  different address, so base cleartext is permitted deliberately.
+
+  The OTA check is the one call that is https (GitHub Pages) and stays https.
+-->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="true"/>
+</network-security-config>
