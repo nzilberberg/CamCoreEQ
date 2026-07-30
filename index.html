@@ -178,6 +178,14 @@
   .setrow{display:flex;align-items:center;gap:10px} .setrow .lbl{min-width:150px}
   .seth{font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
   .transport{display:inline-flex;gap:4px;margin-left:10px} .tbtn{font-size:15px;line-height:1;padding:3px 9px}
+  /* A tapped button must return to its up state on release. Engines keep :focus on a
+     button after a tap (and some match :focus-visible for taps too), which left a
+     stuck blue UA focus ring on the transport cluster. Suppress the ring for POINTER
+     focus on all buttons; keyboard users keep an accent ring via :focus-visible,
+     matching the .paswitch/.abswitch/.tsw convention above. The transport handlers
+     also blur() on click as the belt to this suspender. */
+  button:focus:not(:focus-visible){outline:none}
+  .tbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .bqrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#0e1116;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
   .bqrow .bqnm{font-weight:600} .bqrow .bqmeta{color:var(--muted);font-size:12px} .bqwarn{color:var(--amber);font-weight:600}
   .bqcoef{flex-basis:100%;margin-top:6px;font-family:monospace;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
@@ -343,9 +351,13 @@
     <div id="brStack" style="position:absolute;left:8px;top:0;display:flex;flex-direction:column;align-items:center;gap:6px">
       <img id="albumArt" alt="" style="display:none;width:110px;height:110px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">
       <span class="transport" style="margin:0;justify-content:center">
-        <button id="tPrev" class="sm tbtn" title="previous track">&#9198;</button>
-        <button id="tPlay" class="sm tbtn" title="play / pause">&#9654;</button>
-        <button id="tNext" class="sm tbtn" title="next track">&#9197;</button>
+        <!-- &#xFE0E; (variation selector 15) forces TEXT presentation: U+23EE/23F8/23ED
+             default to colored EMOJI glyphs on Android, which is how the pause icon
+             once rendered orange while play stayed monochrome. Every glyph write must
+             carry it -- the JS sites that swap play/pause do too. -->
+        <button id="tPrev" class="sm tbtn" title="previous track">&#9198;&#xFE0E;</button>
+        <button id="tPlay" class="sm tbtn" title="play / pause">&#9654;&#xFE0E;</button>
+        <button id="tNext" class="sm tbtn" title="next track">&#9197;&#xFE0E;</button>
       </span>
     </div>
     <div id="xfCard" class="xfcard">
@@ -449,7 +461,7 @@
     </div>
     <div id="statusPanels" class="spanels" style="margin-top:0"></div>
   </div>
-  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b217 · fixed the b216 flip-flop: optimistic glyph now HOLDS until a status snapshot requested AFTER the tap arrives (the 1s render loop was repainting stale state over it) · b216 · play/pause latency fix: LMS port cached after first probe (a firewall-dropped probe of the idle port cost ~1s on EVERY transport/status call), optimistic glyph + early confirm poll · b215 · web updates apply IN PLACE at launch (no restart toast); a build published mid-session lights an Apply-update button in Settings · b214 · Settings gains an App section: shell + web version and an on-demand "Update app" button (camcoreeq://update, shell v5+) · b213 · a WebView with no injected shell version now labels itself "OLD shell (pre-v3)" instead of masquerading as a browser · b212 · viewport declared as the 980px design width, so every client lays out like a desktop browser and scales to fit (the measured app-vs-Firefox divergence) · b211 · native self-update: the app now downloads and installs a newer APK itself (one tap), required updates route automatically · b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
+  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b218 · transport glyphs forced to TEXT presentation (pause rendered as orange emoji on Android) + tap focus ring no longer sticks (pointer-focus outline suppressed, keyboard keeps accent ring, handlers blur on click) · b217 · fixed the b216 flip-flop: optimistic glyph now HOLDS until a status snapshot requested AFTER the tap arrives (the 1s render loop was repainting stale state over it) · b216 · play/pause latency fix: LMS port cached after first probe (a firewall-dropped probe of the idle port cost ~1s on EVERY transport/status call), optimistic glyph + early confirm poll · b215 · web updates apply IN PLACE at launch (no restart toast); a build published mid-session lights an Apply-update button in Settings · b214 · Settings gains an App section: shell + web version and an on-demand "Update app" button (camcoreeq://update, shell v5+) · b213 · a WebView with no injected shell version now labels itself "OLD shell (pre-v3)" instead of masquerading as a browser · b212 · viewport declared as the 980px design width, so every client lays out like a desktop browser and scales to fit (the measured app-vs-Firefox divergence) · b211 · native self-update: the app now downloads and installs a newer APK itself (one tap), required updates route automatically · b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
 </div>
 
 <script>
@@ -1344,15 +1356,17 @@ window.EQ_setHost = function (h) {
       window.__optAt=Date.now();
       window.__playMode=window.__optMode;
       var tp=document.getElementById("tPlay");
-      if(tp)tp.innerHTML=(c==="play")?"&#9208;":"&#9654;";
+      if(tp)tp.innerHTML=(c==="play")?"&#9208;&#xFE0E;":"&#9654;&#xFE0E;";   // FE0E = text presentation, else Android renders the pause as an orange emoji
     }
     fetch(CMD_URL+"?c="+c).then(function(){
       if(window.__pollNow)setTimeout(window.__pollNow,250);
     }).catch(function(){});
   }
-  document.getElementById("tPrev").onclick=function(){tcmd("prev");};
-  document.getElementById("tNext").onclick=function(){tcmd("next");};
-  document.getElementById("tPlay").onclick=function(){tcmd(window.__playMode==="play"?"pause":"play");};
+  // this.blur(): some engines match :focus-visible even for taps, so CSS alone cannot
+  // guarantee the button returns to its up state on release -- dropping focus can.
+  document.getElementById("tPrev").onclick=function(){this.blur();tcmd("prev");};
+  document.getElementById("tNext").onclick=function(){this.blur();tcmd("next");};
+  document.getElementById("tPlay").onclick=function(){this.blur();tcmd(window.__playMode==="play"?"pause":"play");};
   // help popup (controls & tips) over the graph
   document.getElementById("helpBtn").onclick=function(e){e.stopPropagation();var p=document.getElementById("helpPop");p.style.display=(p.style.display==="none"?"block":"none");};
   document.getElementById("helpDismiss").onclick=function(){document.getElementById("helpPop").style.display="none";};
@@ -1965,7 +1979,7 @@ window.EQ_setHost = function (h) {
       if(sysReqAt>window.__optAt || Date.now()-window.__optAt>5000) window.__optMode=null;
       else _m=window.__optMode;
     }
-    window.__playMode=_m; var _tp=document.getElementById("tPlay"); if(_tp)_tp.innerHTML=(_m==="play")?"&#9208;":"&#9654;";   // reflect play/pause on the transport button
+    window.__playMode=_m; var _tp=document.getElementById("tPlay"); if(_tp)_tp.innerHTML=(_m==="play")?"&#9208;&#xFE0E;":"&#9654;&#xFE0E;";   // reflect play/pause on the transport button; FE0E keeps it TEXT, not orange emoji
     var eng=(dsp.state==="Running"||sys.cdsp), bypOn=!!(window.__bypass&&window.__bypass!=="off"), codec=codecName(SG.type);
     npTick(L.time);updateNpBox(SG,L,codec,srcBr);   // feed the album-art hover box from the same computed fields (runs every 1s → elapsed ticks)
     if(window.__lastApply&&window.__lastApply!==lastApplySeen){lastApplySeen=window.__lastApply;clipBase=dsp.clipped||0;}
