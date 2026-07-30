@@ -443,7 +443,7 @@
     </div>
     <div id="statusPanels" class="spanels" style="margin-top:0"></div>
   </div>
-  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
+  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
 </div>
 
 <script>
@@ -467,6 +467,27 @@ window.EQ_HOST = (function () {
 })();
 window.EQ_CGI = "http://" + window.EQ_HOST + ":8080/cgi-bin/";
 window.EQ_WS  = "ws://" + window.EQ_HOST + ":1234";
+
+// Viewport metrics for the Diagnostics panel. On window because the status-panel scope
+// that renders it cannot see values declared in the editor scope.
+//
+// This exists because "the layout looks different in the app than the browser" is not
+// actionable as a description. graphScale is the number that explains proportions: the
+// response graph is authored at a 900px design width and scaled by clientWidth/900,
+// while the rows, inputs and buttons around it are fixed px. So a narrow viewport
+// shrinks the plot without shrinking the controls, and they stop agreeing. Comparing
+// this one string between the app and a browser localises the difference immediately.
+window.EQ_vpInfo = function () {
+  try {
+    var h = document.getElementById("host");
+    var cw = h && h.clientWidth ? h.clientWidth : 0;
+    var vv = window.visualViewport;
+    return window.innerWidth + "x" + window.innerHeight +
+      " css, dpr " + (window.devicePixelRatio || 1) +
+      (vv ? ", vv " + Math.round(vv.width) + " @" + (Math.round(vv.scale * 100) / 100) : "") +
+      ", graphScale " + (cw ? (Math.round((cw / 900) * 100) / 100) : "n/a");
+  } catch (e) { return "-"; }
+};
 
 // Persist a player address and rebuild the URLs. A reload is deliberate: the URL
 // constants above are read once at startup by both scopes, so re-deriving them in
@@ -1847,7 +1868,14 @@ window.EQ_setHost = function (h) {
       ["CamillaDSP",dsp.version||"-"],
       ["Squeezelite",sysinfo.squeezelite||"-"],
       ["LMS server",sysinfo.lms||"-"],
-      ["UI build",(document.getElementById("bld")||{}).textContent||"-"]]);
+      ["UI build",(document.getElementById("bld")||{}).textContent||"-"],
+      // Viewport metrics, so a "the layout looks different here" report can be compared
+      // as NUMBERS between the Android app and a browser instead of as impressions.
+      // graphScale is the one that actually explains proportions: the graph is drawn at
+      // a 900px design width and scaled by clientWidth/900, while the surrounding rows
+      // and inputs are fixed px -- so a narrow viewport shrinks the plot but not the
+      // controls, and the two stop matching.
+      ["Viewport",window.EQ_vpInfo()]]);
     h+=box("Persistence",[
       ["EQ preset",window.__preset||"-"],
       ["Modified",pmod?"yes":"no",pmod?"warnc":""],

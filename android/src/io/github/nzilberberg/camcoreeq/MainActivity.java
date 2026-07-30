@@ -60,6 +60,24 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);          // the app stores its UI prefs and the player address
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_NO_CACHE);  // the OTA swap replaces bytes behind the same URL
+
+        // ---- viewport parity with a browser -------------------------------------
+        // WebView defaults setUseWideViewPort to FALSE, and with it false the engine
+        // IGNORES the page's <meta name="viewport"> entirely -- including this app's
+        // "width=device-width, initial-scale=1". The page is then laid out and scaled
+        // by WebView's own rules instead of its own declaration, which is why the UI
+        // scaled and laid out differently here than in a browser. Turning it on is what
+        // makes the WebView honour the document, not an enhancement.
+        s.setUseWideViewPort(true);
+        s.setLoadWithOverviewMode(true);   // fit the declared viewport to the view on load
+        // A browser lets you pinch-zoom a dense control surface; WebView does not unless
+        // asked. Enable the gesture but not the deprecated on-screen +/- buttons.
+        s.setBuiltInZoomControls(true);
+        s.setDisplayZoomControls(false);
+        // Pin text scaling. WebView applies its own font boosting/system text scaling,
+        // which is a second, independent source of "text is a different size than the
+        // browser" once the viewport itself is correct.
+        s.setTextZoom(100);
         web.setVerticalScrollBarEnabled(false);
         web.setHorizontalScrollBarEnabled(false);
         web.setWebViewClient(new WebViewClient());
