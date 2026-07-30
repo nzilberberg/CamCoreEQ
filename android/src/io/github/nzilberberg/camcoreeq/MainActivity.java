@@ -135,19 +135,47 @@ public class MainActivity extends Activity {
     // which is exactly how TomeRoam's Options button behaves.
     private String stagedWeb = null;
     private boolean firstResume = true;
+    private android.os.Handler tick;
+    private Runnable periodic;
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (firstResume) { firstResume = false; return; }   // onCreate's check covers launch
+    /** 90s. onResume alone was not enough: it never fires while the app sits in the
+     *  foreground, so a user watching the screen never saw a newly published build --
+     *  the reported "app isn't seeing updates while it's already running". */
+    private static final long CHECK_EVERY_MS = 90_000L;
+
+    private void checkForWeb(final boolean announce) {
         if (web == null) return;
         WebUpdater.checkAsync(this, (newBuild, message) -> runOnUiThread(() -> {
             if (newBuild != null) {
                 stagedWeb = newBuild;
-                Toast.makeText(this, "CamCoreEQ " + newBuild
+                if (announce) Toast.makeText(this, "CamCoreEQ " + newBuild
                         + " ready - apply it in Settings", Toast.LENGTH_LONG).show();
             }
         }));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!firstResume) checkForWeb(true);   // onCreate's check covers launch
+        firstResume = false;
+        // Poll while foregrounded so a resident app notices a publish. Stopped in
+        // onPause so a backgrounded app never does network work.
+        if (tick == null) tick = new android.os.Handler(android.os.Looper.getMainLooper());
+        if (periodic == null) periodic = new Runnable() {
+            @Override public void run() {
+                if (stagedWeb == null) checkForWeb(true);   // nothing to say once staged
+                tick.postDelayed(this, CHECK_EVERY_MS);
+            }
+        };
+        tick.removeCallbacks(periodic);
+        tick.postDelayed(periodic, CHECK_EVERY_MS);
+    }
+
+    @Override
+    protected void onPause() {
+        if (tick != null && periodic != null) tick.removeCallbacks(periodic);
+        super.onPause();
     }
 
     // Only @JavascriptInterface methods are reachable from JS. Kept intentionally tiny.
@@ -162,10 +190,15 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> ApkUpdater.startUpdate(MainActivity.this));
         }
 
-        // A web build committed while this session was already running (found by the
-        // onResume re-check), or "" when the running page is current.
+        // A web build committed while this session was already running, or "" when the
+        // running page is current.
         @android.webkit.JavascriptInterface
         public String stagedWebBuild() { return stagedWeb == null ? "" : stagedWeb; }
+
+        // Force a check right now, so the user never has to wait out the 90s timer or
+        // background/foreground the app to make it look. Backs a Settings button.
+        @android.webkit.JavascriptInterface
+        public void checkNow() { runOnUiThread(() -> checkForWeb(true)); }
 
         // Apply it in place: the loopback server already serves the committed copy,
         // so a reload is the whole operation. Tap = consent, same as TomeRoam.

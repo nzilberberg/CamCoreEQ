@@ -276,7 +276,8 @@
         <div class="setrow"><button id="setDiag" class="sm">Send diagnostics to player</button><span class="spacer"></span><button id="setDiagCopy" class="sm">Copy</button></div>
         <textarea id="setDiagOut" readonly rows="4" spellcheck="false" style="display:none;width:100%;box-sizing:border-box;margin-top:2px;background:#0e1116;color:var(--muted);border:1px solid var(--line);border-radius:6px;font:11px/1.45 ui-monospace,Consolas,monospace;padding:7px;resize:vertical;-webkit-user-select:text;user-select:text"></textarea>
         <div class="seth" id="setAppHead" style="display:none">App</div>
-        <div class="setrow" id="setAppRow" style="display:none"><span class="lbl" id="setAppVer"></span><span class="spacer"></span><button id="setWebUpd" class="sm" style="display:none">Apply update</button><button id="setAppUpd" class="sm">Update app</button></div>
+        <div class="setrow" id="setAppRow" style="display:none"><span class="lbl" id="setAppVer"></span><span class="spacer"></span><button id="setChk" class="sm" style="display:none">Check now</button><button id="setWebUpd" class="sm" style="display:none">Apply update</button><button id="setAppUpd" class="sm">Update app</button></div>
+        <div class="setnote" id="setStaleNote" style="display:none;color:var(--amber)"></div>
       </div>
       <div class="modalf"><span id="setMsg" class="modalmsg"></span><span class="spacer"></span><button id="setClose" class="sm">Close</button></div>
     </div>
@@ -464,7 +465,7 @@
     </div>
     <div id="statusPanels" class="spanels" style="margin-top:0"></div>
   </div>
-  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b218 · transport cluster: accent-blue border is the resting state (gray read as disabled), glyphs forced to TEXT presentation (pause rendered as orange emoji on Android), and a tap no longer leaves a stuck focus ring (pointer-focus outline suppressed, handlers blur on click) · b217 · fixed the b216 flip-flop: optimistic glyph now HOLDS until a status snapshot requested AFTER the tap arrives (the 1s render loop was repainting stale state over it) · b216 · play/pause latency fix: LMS port cached after first probe (a firewall-dropped probe of the idle port cost ~1s on EVERY transport/status call), optimistic glyph + early confirm poll · b215 · web updates apply IN PLACE at launch (no restart toast); a build published mid-session lights an Apply-update button in Settings · b214 · Settings gains an App section: shell + web version and an on-demand "Update app" button (camcoreeq://update, shell v5+) · b213 · a WebView with no injected shell version now labels itself "OLD shell (pre-v3)" instead of masquerading as a browser · b212 · viewport declared as the 980px design width, so every client lays out like a desktop browser and scales to fit (the measured app-vs-Firefox divergence) · b211 · native self-update: the app now downloads and installs a newer APK itself (one tap), required updates route automatically · b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
+  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b219 · a running app now notices new builds (90s foreground re-check + a Check-now button), and any stale client is told so by comparing against the build the player serves · b218 · transport cluster: accent-blue border is the resting state (gray read as disabled), glyphs forced to TEXT presentation (pause rendered as orange emoji on Android), and a tap no longer leaves a stuck focus ring (pointer-focus outline suppressed, handlers blur on click) · b217 · fixed the b216 flip-flop: optimistic glyph now HOLDS until a status snapshot requested AFTER the tap arrives (the 1s render loop was repainting stale state over it) · b216 · play/pause latency fix: LMS port cached after first probe (a firewall-dropped probe of the idle port cost ~1s on EVERY transport/status call), optimistic glyph + early confirm poll · b215 · web updates apply IN PLACE at launch (no restart toast); a build published mid-session lights an Apply-update button in Settings · b214 · Settings gains an App section: shell + web version and an on-demand "Update app" button (camcoreeq://update, shell v5+) · b213 · a WebView with no injected shell version now labels itself "OLD shell (pre-v3)" instead of masquerading as a browser · b212 · viewport declared as the 980px design width, so every client lays out like a desktop browser and scales to fit (the measured app-vs-Firefox divergence) · b211 · native self-update: the app now downloads and installs a newer APK itself (one tap), required updates route automatically · b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
 </div>
 
 <script>
@@ -1800,12 +1801,24 @@ window.EQ_setHost = function (h) {
     var wv=/; wv\)/.test(navigator.userAgent);
     var n=window.EQ_NATIVE;                        // injected by v3/v4 shells post-load
     if(br&&br.nativeVersion){try{n=br.nativeVersion();}catch(e){}}
-    if(n==null&&!wv)return;                        // a plain browser: section stays hidden
     var tag=((document.getElementById("bld")||{}).textContent||"").split("·")[0].trim();
+    var inApp=(n!=null||wv);
+    var dep=window.__webbuild||"";
+    var stale=!!(dep&&tag&&dep!==tag);
+    // The section is app-oriented, but STALENESS concerns everyone -- a browser holding
+    // a cached page is the commonest case and the easiest to fix (reload). So the
+    // section also opens for a stale browser; it used to return early here, which meant
+    // the audience that could act most easily was never told.
+    if(!inApp&&!stale){
+      document.getElementById("setAppHead").style.display="none";
+      document.getElementById("setAppRow").style.display="none";
+      document.getElementById("setStaleNote").style.display="none";
+      return;
+    }
     document.getElementById("setAppHead").style.display="";
     document.getElementById("setAppRow").style.display="";
     document.getElementById("setAppVer").textContent=
-      (n!=null?("Shell v"+n):"OLD shell (pre-v3)")+" · web "+tag;
+      (inApp?(n!=null?("Shell v"+n):"OLD shell (pre-v3)"):"Browser")+" · web "+tag;
     document.getElementById("setAppUpd").style.display=(br&&br.updateApp)?"":"none";
     // A web build committed while this session was already open (the shell's onResume
     // re-check found it). Applying is just a reload -- the shell already serves it.
@@ -1814,6 +1827,18 @@ window.EQ_setHost = function (h) {
     var wb=document.getElementById("setWebUpd");
     wb.style.display=(sw&&br&&br.applyWebUpdate)?"":"none";
     if(sw)wb.textContent="Apply update ("+sw+")";
+    // "Check now": only a shell that can actually re-fetch offers it (v7+).
+    document.getElementById("setChk").style.display=(br&&br.checkNow)?"":"none";
+    // Staleness, and it works on ANY shell and in a browser: compare the running tag
+    // to the build the PLAYER serves. A browser fixes it by reloading; an app whose
+    // shell cannot re-fetch is told plainly that it needs an app update, rather than
+    // being left to wonder why a change never arrived.
+    var note=document.getElementById("setStaleNote");
+    if(stale&&!sw){
+      note.style.display="";
+      note.textContent="This page is "+tag+" but the player now serves "+dep+". "+
+        (!inApp?"Reload this page.":(br&&br.checkNow?"Tap Check now.":"Update the app to receive it."));
+    }else{note.style.display="none";}
   };
   (function(){var b=document.getElementById("setAppUpd");if(!b)return;
     b.onclick=function(){
@@ -1821,6 +1846,17 @@ window.EQ_setHost = function (h) {
       if(!(br&&br.updateApp))return;               // button is hidden in that case anyway
       document.getElementById("setMsg").textContent="Fetching the latest app…";
       try{br.updateApp();}catch(e){document.getElementById("setMsg").textContent="Update failed to start.";}
+    };})();
+  (function(){var b=document.getElementById("setChk");if(!b)return;
+    b.onclick=function(){this.blur();
+      var br=window.CamCoreEQNative;
+      if(!(br&&br.checkNow))return;
+      document.getElementById("setMsg").textContent="Checking…";
+      try{br.checkNow();}catch(e){}
+      // re-read the bridge shortly after; a found build lights Apply update
+      setTimeout(function(){window.EQ_appRow&&window.EQ_appRow();
+        var s=document.getElementById("setWebUpd").style.display==="";
+        document.getElementById("setMsg").textContent=s?"Update ready - tap Apply update.":"No newer build published.";},2500);
     };})();
   (function(){var b=document.getElementById("setWebUpd");if(!b)return;
     b.onclick=function(){
@@ -1886,7 +1922,12 @@ window.EQ_setHost = function (h) {
   function agoL(t){if(!t)return "-";var s=Math.round((Date.now()-t)/1000);if(s<90)return s+"s ago";var m=Math.round(s/60);if(m<90)return m+"m ago";var h=Math.round(m/60);if(h<48)return h+"h ago";return Math.round(h/24)+"d ago";}
   function upfmt(s){s=+s||0;if(!s)return "-";var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?(d+"d "+h+"h"):(h?(h+"h "+m+"m"):(m+"m"));}
   function szfmt(kb){kb=+kb||0;if(!kb)return "-";return kb>=1048576?(kb/1048576).toFixed(1)+" GB":Math.round(kb/1024)+" MB";}
-  function fetchSys(){fetch(SYS_URL).then(function(r){return r.json();}).then(function(o){if(o)sysinfo=o;}).catch(function(){setTimeout(fetchSys,5000);});}
+  // window.__webbuild = the build the PLAYER serves. Published across the two-IIFE
+  // boundary so the editor scope's Settings section can compare it to what is actually
+  // running and tell the user they are looking at a stale page, instead of leaving them
+  // to notice. Refetched periodically so a deploy is picked up without a reload.
+  function fetchSys(){fetch(SYS_URL).then(function(r){return r.json();}).then(function(o){if(o){sysinfo=o;window.__webbuild=o.webbuild||"";}}).catch(function(){setTimeout(fetchSys,5000);});}
+  setInterval(fetchSys,60000);
   function srcName(u){if(!u)return null;var s=(u.split("://")[0]||"").toLowerCase();
     var M={qobuz:"Qobuz",spotify:"Spotify",spotty:"Spotify",wimp:"Tidal",tidal:"Tidal",deezer:"Deezer",pandora:"Pandora",qobuzmp3:"Qobuz",radioparadise:"Radio Paradise",soundcloud:"SoundCloud",wavein:"Line in",bbc:"BBC"};
     if(M[s])return M[s]; if(s==="http"||s==="https")return "Web / Radio"; if(s==="file"||u.charAt(0)==="/")return "Local file"; if(!s)return null;
