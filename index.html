@@ -257,6 +257,9 @@
         <div class="setrow"><span class="lbl">Trigger threshold</span><input type="number" id="setThresh" class="ninp" min="0.5" max="12" step="0.5" title="ramp only when the level rises more than this many dB — drag to scrub"> dB</div>
         <div class="setrow"><span class="lbl">Ramp-up speed</span><input type="number" id="setRate" class="ninp" min="3" max="60" step="1" title="how fast the output climbs back to full — drag to scrub"> dB/s</div>
         <div class="setrow"><span class="lbl">Safe-start cut</span><input type="number" id="setStart" class="ninp" min="-40" max="0" step="1" title="how far below full the load/reconnect fade-in begins — drag to scrub"> dB</div>
+        <div class="seth">Player</div>
+        <div class="setnote">Address of the piCorePlayer box running CamillaDSP. Leave blank when this page is served by the player itself — then the address it was loaded from is used. Applying reloads the page.</div>
+        <div class="setrow"><span class="lbl">Player address</span><input type="text" id="setHost" class="ninp" style="width:168px;text-align:left" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="auto" title="hostname or IP of the player — the Android app needs this; a browser served by the player does not"><button id="setHostApply" class="sm">Apply</button></div>
       </div>
       <div class="modalf"><span id="setMsg" class="modalmsg"></span><span class="spacer"></span><button id="setClose" class="sm">Close</button></div>
     </div>
@@ -464,6 +467,57 @@ window.EQ_HOST = (function () {
 })();
 window.EQ_CGI = "http://" + window.EQ_HOST + ":8080/cgi-bin/";
 window.EQ_WS  = "ws://" + window.EQ_HOST + ":1234";
+
+// Persist a player address and rebuild the URLs. A reload is deliberate: the URL
+// constants above are read once at startup by both scopes, so re-deriving them in
+// place would leave already-captured copies pointing at the old host.
+window.EQ_setHost = function (h) {
+  var v = String(h || "").trim().replace(/^[a-z]+:\/\//i, "").replace(/[\/:].*$/, "");
+  try { if (v) localStorage.setItem("eqHost", v); else localStorage.removeItem("eqHost"); } catch (e) {}
+  location.reload();
+};
+
+// If no player address is known, EVERY request would target "http://:8080/..." and
+// fail -- and each failure path in this app is a silent no-op or an endless retry, so
+// the user would see a dead editor with no explanation. Ask instead of failing quietly.
+// This branch cannot affect the normal case: when the app is served BY the player,
+// location.hostname resolves and none of the code below runs.
+(function () {
+  if (window.EQ_HOST) return;
+  function show() {
+    if (!document.body || document.getElementById("hostGate")) return;
+    var d = document.createElement("div");
+    d.id = "hostGate";
+    d.setAttribute("style", "position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;" +
+      "background:rgba(8,10,14,.95);display:flex;align-items:center;justify-content:center;padding:20px");
+    d.innerHTML =
+      '<div style="max-width:430px;width:100%;background:#141922;border:1px solid #2a3340;border-radius:10px;' +
+      'padding:18px;font:14px/1.5 system-ui,-apple-system,sans-serif;color:#dfe7f2">' +
+      '<div style="font-size:17px;margin-bottom:8px">Connect to your player</div>' +
+      '<div style="color:#94a3b8;margin-bottom:14px">Enter the address of the piCorePlayer box running ' +
+      'CamillaDSP. Needed only when this app is not being served by the player itself.</div>' +
+      '<input id="hostGateIn" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" ' +
+      'placeholder="player.local   or   192.168.x.x" style="width:100%;box-sizing:border-box;padding:9px 10px;' +
+      'border-radius:6px;border:1px solid #2a3340;background:#0e1116;color:#dfe7f2;font-size:15px">' +
+      '<div id="hostGateErr" style="color:#f5a623;min-height:18px;margin:6px 0 4px;font-size:12.5px"></div>' +
+      '<button id="hostGateGo" style="width:100%;padding:10px;border-radius:6px;border:0;background:#2f81f7;' +
+      'color:#fff;font-size:15px;cursor:pointer">Connect</button>' +
+      '<div style="color:#64748b;font-size:12px;margin-top:10px">Change it later in Settings.</div></div>';
+    document.body.appendChild(d);
+    var inp = document.getElementById("hostGateIn");
+    var err = document.getElementById("hostGateErr");
+    function go() {
+      var v = (inp.value || "").trim().replace(/^[a-z]+:\/\//i, "").replace(/[\/:].*$/, "");
+      if (!v) { err.textContent = "Enter the player address."; return; }
+      window.EQ_setHost(v);
+    }
+    document.getElementById("hostGateGo").onclick = go;
+    inp.onkeydown = function (e) { if (e.key === "Enter" || e.keyCode === 13) go(); };
+    try { inp.focus(); } catch (e) {}
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", show);
+  else show();
+})();
 
 (function(){
   "use strict";
@@ -1575,7 +1629,14 @@ window.EQ_WS  = "ws://" + window.EQ_HOST + ":1234";
   function paintGsafe(){var s=document.getElementById("gsafeSwitch");if(s){s.classList.toggle("on",guardOn);s.setAttribute("aria-checked",guardOn?"true":"false");}}   // "Gain safety" master toggle lives on the Preamp row
   function syncSettingsUI(){document.getElementById("setSafeStart").checked=safeStartOn;
     document.getElementById("setThresh").value=SAFE_THRESH;document.getElementById("setRate").value=SAFE_RATE;document.getElementById("setStart").value=SAFE_START;
-    ["setSafeStart","setThresh","setRate","setStart"].forEach(function(id){document.getElementById(id).disabled=!guardOn;});paintGsafe();}   // ramp params moot if the guard is off
+    ["setSafeStart","setThresh","setRate","setStart"].forEach(function(id){document.getElementById(id).disabled=!guardOn;});paintGsafe();
+    var hi=document.getElementById("setHost");if(hi){try{hi.value=localStorage.getItem("eqHost")||"";}catch(e){hi.value="";}}}   // ramp params moot if the guard is off; player address is independent of the guard
+  // Player address. Deliberately NOT part of eqSettings: that object is the gain-safety
+  // group and is reset/edited as a unit, while the host is connection identity — losing
+  // it would leave the app unable to reach anything with no obvious cause.
+  (function(){var b=document.getElementById("setHostApply");if(!b)return;
+    b.onclick=function(){window.EQ_setHost(document.getElementById("setHost").value);};
+    document.getElementById("setHost").onkeydown=function(e){if(e.key==="Enter"||e.keyCode===13)b.onclick();};})();
   document.getElementById("menuBtn").onclick=function(){syncSettingsUI();document.getElementById("setMsg").textContent="";document.getElementById("settingsModal").style.display="flex";};   // gear opens Settings directly (dropdown retired)
   function closeSettings(){document.getElementById("settingsModal").style.display="none";}
   document.getElementById("setClose").onclick=closeSettings;
