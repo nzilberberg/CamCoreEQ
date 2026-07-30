@@ -42,13 +42,59 @@ final class WebStore {
         return d.isFile() && d.length() > 0 && m.isFile() && m.length() > 0;
     }
 
+    /**
+     * Numeric rank of a "bNNN" build string, or -1 when it cannot be read.
+     * Builds are ordered, so an ordering is what decides which copy is newer -- not
+     * merely the presence of a download.
+     */
+    static int buildRank(String build) {
+        if (build == null) return -1;
+        StringBuilder n = new StringBuilder();
+        for (int i = 0; i < build.length(); i++) {
+            char ch = build.charAt(i);
+            if (Character.isDigit(ch)) n.append(ch);
+            else if (n.length() > 0) break;
+        }
+        if (n.length() == 0) return -1;
+        try { return Integer.parseInt(n.toString()); } catch (Exception e) { return -1; }
+    }
+
+    /**
+     * Pure decision: should the downloaded copy be served instead of the bundled one?
+     *
+     * THE BUG THIS FIXES: this used to be "is there a download?", which meant that after
+     * an APK upgrade a STALE downloaded copy permanently shadowed the NEWER copy shipped
+     * inside the new APK. Installing a new app version then appeared to change nothing.
+     *
+     * Ties go to the BUNDLE, and so does any unparseable build on either side: the
+     * bundled copy is the signed artifact, so it is the safer default whenever the
+     * ordering is not clear.
+     */
+    static boolean preferDownload(String downloadedBuild, String bundledBuild) {
+        int dl = buildRank(downloadedBuild), bd = buildRank(bundledBuild);
+        if (dl < 0) return false;
+        if (bd < 0) return false;
+        return dl > bd;
+    }
+
+    /** True when a complete download exists AND is newer than what the APK bundles. */
+    private static boolean useDownload(Context c) {
+        if (!hasDownload(c)) return false;
+        String dl, bd;
+        try { dl = buildOf(new String(LoopbackServer.readFile(downloadedMan(c)), "UTF-8")); }
+        catch (Exception e) { return false; }
+        try { bd = buildOf(new String(asset(c, "www/" + MAN), "UTF-8")); }
+        catch (Exception e) { return false; }
+        return preferDownload(dl, bd);
+    }
+
     static byte[] currentDocument(Context c) throws IOException {
-        if (hasDownload(c)) return LoopbackServer.readFile(downloadedDoc(c));
+        if (useDownload(c)) return LoopbackServer.readFile(downloadedDoc(c));
         return asset(c, "www/" + DOC);
     }
 
     static byte[] currentManifest(Context c) throws IOException {
-        if (hasDownload(c)) return LoopbackServer.readFile(downloadedMan(c));
+        if (useDownload(c)) return LoopbackServer.readFile(downloadedMan(c));
         return asset(c, "www/" + MAN);
     }
 

@@ -30,7 +30,7 @@ final class WebUpdater {
     private static final int TIMEOUT_MS = 8000;
 
     /** The shell's own version. Raise it, versionCode and build.json's nativeVersion together. */
-    static final int NATIVE_VERSION = 2;
+    static final int NATIVE_VERSION = 3;
 
     interface Listener {
         /** Called on a worker thread. newBuild is null when nothing changed. */

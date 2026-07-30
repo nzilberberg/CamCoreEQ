@@ -80,7 +80,18 @@ public class MainActivity extends Activity {
         s.setTextZoom(100);
         web.setVerticalScrollBarEnabled(false);
         web.setHorizontalScrollBarEnabled(false);
-        web.setWebViewClient(new WebViewClient());
+        // Publish the SHELL version into the page so the UI can show it. Without this
+        // there is no way to tell from the app which native version is installed, only
+        // which web build is being served -- and with two independent update tracks that
+        // is the first question when someone reports "installing the update changed
+        // nothing". Injected rather than exposed via addJavascriptInterface: this is a
+        // one-way constant, and an interface would add a callable surface for no reason.
+        web.setWebViewClient(new WebViewClient() {
+            @Override public void onPageFinished(WebView v, String url) {
+                v.evaluateJavascript(
+                    "window.EQ_NATIVE=" + WebUpdater.NATIVE_VERSION + ";", null);
+            }
+        });
 
         FrameLayout root = new FrameLayout(this);
         root.addView(web, new FrameLayout.LayoutParams(
