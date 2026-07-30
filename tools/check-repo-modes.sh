@@ -24,7 +24,7 @@ cd "$root" || { echo "SCAN ERROR: cannot cd to $root" >&2; exit 2; }
 # cgi-bin/ and kept executable for consistency with its siblings.
 NEED="save.sh presets.sh state.sh log.sh status.sh sysinfo.sh cmd.sh _lmssrv.sh
 early-squeeze.sh check-camcoreeq.sh lint-lms-ports.sh lint-exec-bits.sh
-tools/install-on-player.sh tools/install-hooks.sh tools/check-repo-modes.sh"
+tools/install-on-player.sh tools/install-hooks.sh tools/check-repo-modes.sh tools/deploy-to-player.sh"
 
 listing="$(git ls-files -s 2>/dev/null)" || { echo "SCAN ERROR: git ls-files failed" >&2; exit 2; }
 [ -n "$listing" ] && : || { echo "SCAN ERROR: git index is empty - gate would be vacuous" >&2; exit 2; }
