@@ -82,9 +82,36 @@ was once corrupted by moving its bytes through a text channel.
 | `make-icon.mjs` | generates the launcher icon |
 | `build.ps1` | the whole build |
 
+### versionCode vs NATIVE_VERSION — they are not the same thing
+
+`versionCode` is Android's install ordinal: it must increase for **any** new APK artifact,
+including a rebuild that only re-bundles a newer web build. Android refuses to install an APK
+whose `versionCode` is not higher than the installed one.
+
+`NATIVE_VERSION` (and `build.json`'s `nativeVersion`) describe the **shell's own capabilities**,
+and only move when this Java code changes. So a web-only rebundle bumps `versionCode` and
+`versionName` while leaving `NATIVE_VERSION` alone. Bumping the shell version for a web-only
+change would falsely advertise a capability that did not change.
+
+## Reporting a problem without copying anything
+
+The UI is a drag surface, so text selection is unreliable on a phone. Instead:
+**Settings → Diagnostics → Send diagnostics to player.** That writes a snapshot of the client
+(viewport size, device pixel ratio, visual-viewport scale, measured element geometry, the web build
+and the shell version) into the player's Output Log, which persists server-side. It can then be read
+back off the player directly:
+
+```
+curl -s http://<player>:8080/cgi-bin/log.sh
+```
+
+Tap it once in the app and once in a browser to compare the two clients on identical numbers rather
+than on impressions. If the player is unreachable the snapshot appears in a selectable text box
+instead, with a Copy button.
+
 ## Known limits
 
-- Not verified on a device yet. It compiles, signs and bundles the correct build, but no
-  on-device run has been done.
+- The loopback origin, the fixed port and the system-bar insets are device-confirmed (b207 ran
+  correctly first try). Layout parity with a browser is **not** settled — see the repository history.
 - Assumes the player serves the EQ on port 8080 and CamillaDSP on 1234, the defaults.
 - The app does not detect the player automatically; you enter its address once.

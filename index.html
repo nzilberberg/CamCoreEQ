@@ -260,6 +260,10 @@
         <div class="seth">Player</div>
         <div class="setnote">Address of the piCorePlayer box running CamillaDSP. Leave blank when this page is served by the player itself — then the address it was loaded from is used. Applying reloads the page.</div>
         <div class="setrow"><span class="lbl">Player address</span><input type="text" id="setHost" class="ninp" style="width:168px;text-align:left" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="auto" title="hostname or IP of the player — the Android app needs this; a browser served by the player does not"><button id="setHostApply" class="sm">Apply</button></div>
+        <div class="seth">Diagnostics</div>
+        <div class="setnote">Writes a snapshot of this client (viewport, geometry, versions) to the player's Output Log, where it can be read back without copying anything by hand. Tap it in the app and in a browser to compare the two.</div>
+        <div class="setrow"><button id="setDiag" class="sm">Send diagnostics to player</button><span class="spacer"></span><button id="setDiagCopy" class="sm">Copy</button></div>
+        <textarea id="setDiagOut" readonly rows="4" spellcheck="false" style="display:none;width:100%;box-sizing:border-box;margin-top:2px;background:#0e1116;color:var(--muted);border:1px solid var(--line);border-radius:6px;font:11px/1.45 ui-monospace,Consolas,monospace;padding:7px;resize:vertical;-webkit-user-select:text;user-select:text"></textarea>
       </div>
       <div class="modalf"><span id="setMsg" class="modalmsg"></span><span class="spacer"></span><button id="setClose" class="sm">Close</button></div>
     </div>
@@ -443,7 +447,7 @@
     </div>
     <div id="statusPanels" class="spanels" style="margin-top:0"></div>
   </div>
-  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
+  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
 </div>
 
 <script>
@@ -487,6 +491,65 @@ window.EQ_vpInfo = function () {
       (vv ? ", vv " + Math.round(vv.width) + " @" + (Math.round(vv.scale * 100) / 100) : "") +
       ", graphScale " + (cw ? (Math.round((cw / 900) * 100) / 100) : "n/a");
   } catch (e) { return "-"; }
+};
+
+// Full diagnostic snapshot, as a compact JSON string.
+//
+// This exists because the UI is a drag surface with selection suppressed, so on a phone
+// there is no practical way to copy a value out of the Diagnostics panel and describe
+// it. Instead the snapshot is written to the player's own log (which already persists
+// server-side), where it can be read back without the user transcribing anything.
+//
+// Layout-relevant geometry is measured rather than described: the whole point is to
+// compare the SAME numbers between the Android app and a browser and see where they
+// diverge, instead of comparing two people's impressions of "it looks wrong".
+window.EQ_diag = function () {
+  var g = function (id) { return document.getElementById(id); };
+  var num = function (v) { return (typeof v === "number") ? Math.round(v * 100) / 100 : v; };
+  var rect = function (el) {
+    if (!el) return null;
+    var r = el.getBoundingClientRect();
+    return { w: num(r.width), h: num(r.height), x: num(r.left), y: num(r.top) };
+  };
+  var d = {};
+  try {
+    var vv = window.visualViewport;
+    var hostEl = g("host");
+    var svg = hostEl ? hostEl.querySelector("svg") : null;
+    var tag = (g("bld") || {}).textContent || "";
+    d.t = new Date().toISOString();
+    d.build = tag.split("·")[0].trim();
+    d.client = (window.EQ_NATIVE != null) ? ("android-shell-v" + window.EQ_NATIVE) : "browser";
+    d.eqHost = window.EQ_HOST || "(none)";
+    d.ua = navigator.userAgent;
+    d.win = { iw: window.innerWidth, ih: window.innerHeight,
+              ow: window.outerWidth, oh: window.outerHeight,
+              dpr: num(window.devicePixelRatio || 1) };
+    d.vv = vv ? { w: num(vv.width), h: num(vv.height), scale: num(vv.scale),
+                  offTop: num(vv.offsetTop) } : null;
+    d.screen = { w: screen.width, h: screen.height,
+                 avail: screen.availWidth + "x" + screen.availHeight,
+                 orient: (screen.orientation || {}).type || "?" };
+    d.doc = { htmlClient: document.documentElement.clientWidth,
+              htmlScroll: document.documentElement.scrollWidth,
+              bodyScroll: document.body ? document.body.scrollWidth : null };
+    // The graph is authored at a 900px design width and scaled by clientWidth/900,
+    // so graphScale is the single number that explains broken proportions.
+    d.graph = { clientW: hostEl ? hostEl.clientWidth : null,
+                scale: (hostEl && hostEl.clientWidth) ? num(hostEl.clientWidth / 900) : null,
+                svg: rect(svg) };
+    d.meter = rect(g("meterBox"));
+    d.rows = { sel: rect(g("selInfo")), headroom: rect(g("headroom")),
+               wrap: rect(document.querySelector(".wrap")) };
+    var cs = window.getComputedStyle(document.body);
+    d.css = { bodyFont: cs.fontSize, bodyWidth: cs.width, zoom: cs.zoom || "1" };
+    var keys = [];
+    try { for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i)); } catch (e) {}
+    d.lsKeys = keys.sort();          // key NAMES only, never their contents
+  } catch (e) {
+    d.error = String(e && e.message || e);
+  }
+  return JSON.stringify(d);
 };
 
 // Persist a player address and rebuild the URLs. A reload is deliberate: the URL
@@ -1658,6 +1721,29 @@ window.EQ_setHost = function (h) {
   (function(){var b=document.getElementById("setHostApply");if(!b)return;
     b.onclick=function(){window.EQ_setHost(document.getElementById("setHost").value);};
     document.getElementById("setHost").onkeydown=function(e){if(e.key==="Enter"||e.keyCode===13)b.onclick();};})();
+  // Diagnostics snapshot. Rides logMsg/saveLog, which already persist the Output Log to
+  // the player server-side, so a snapshot can be read back later without the user
+  // transcribing anything from a screen that resists text selection.
+  // The textarea is the fallback for an unreachable player: a readonly textarea IS
+  // selectable even where the surrounding drag surface suppresses selection.
+  (function(){var b=document.getElementById("setDiag");if(!b)return;
+    var out=document.getElementById("setDiagOut"), cp=document.getElementById("setDiagCopy");
+    function snap(){try{return window.EQ_diag();}catch(e){return '{"error":"snapshot failed"}';}}
+    b.onclick=function(){
+      var json=snap();
+      out.value=json; out.style.display="block";
+      logMsg("info","Diag",json);            // debounced POST to the player via saveLog()
+      document.getElementById("setMsg").textContent=
+        logReady?"Sent to the player's Output Log.":"Player unreachable - copy the text below.";
+    };
+    cp.onclick=function(){
+      if(!out.value){out.value=snap();out.style.display="block";}
+      out.focus(); out.select();
+      var ok=false;
+      try{ok=document.execCommand("copy");}catch(e){}                 // LAN http is not a secure context
+      if(!ok&&navigator.clipboard){try{navigator.clipboard.writeText(out.value);ok=true;}catch(e){}}
+      document.getElementById("setMsg").textContent=ok?"Copied.":"Select the text below and copy.";
+    };})();
   document.getElementById("menuBtn").onclick=function(){syncSettingsUI();document.getElementById("setMsg").textContent="";document.getElementById("settingsModal").style.display="flex";};   // gear opens Settings directly (dropdown retired)
   function closeSettings(){document.getElementById("settingsModal").style.display="none";}
   document.getElementById("setClose").onclick=closeSettings;

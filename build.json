@@ -1,5 +1,5 @@
 {
-  "build": "b209",
+  "build": "b210",
   "nativeVersion": 3,
   "minNativeVersion": 1,
   "note": "Update manifest for the Android client. GitHub Pages serves this file; the app fetches it NATIVELY (no-store) and compares `build` against the copy it has. It is NOT a runtime dependency -- the app runs entirely from its stored copy when this fetch fails, which is the normal case on a LAN with no internet. `build` must match the visible build tag in index.html so the footer is the ground truth for what is running. `nativeVersion`: the shell version this web build was validated against -- bump it (with the APK's NATIVE_VERSION and versionCode) when the native shell itself changes, so the app can offer an APK update; leave it alone for web-only changes, which update silently. `minNativeVersion`: the OLDEST shell this web build will run on -- raise it only when a web build needs something an older shell cannot do."
