@@ -68,6 +68,12 @@ final class ApkUpdater {
             .show();
     }
 
+    // Direct entry for the in-page "Update app" button (camcoreeq://update). No dialog:
+    // the user's tap on the button IS the consent the dialogs exist to collect.
+    static void startUpdate(final Activity act) {
+        ensurePermissionThenInstall(act);
+    }
+
     private static void ensurePermissionThenInstall(final Activity act) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 && !act.getPackageManager().canRequestPackageInstalls()) {

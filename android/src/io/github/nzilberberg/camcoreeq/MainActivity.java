@@ -88,10 +88,22 @@ public class MainActivity extends Activity {
         // one-way constant, and an interface would add a callable surface for no reason.
         web.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView v, String url) {
+                // Kept for compatibility: shells v3/v4 published EQ_NATIVE this way and
+                // the diagnostics code reads it. New code should prefer the bridge
+                // below, which is available from document start rather than after load.
                 v.evaluateJavascript(
                     "window.EQ_NATIVE=" + WebUpdater.NATIVE_VERSION + ";", null);
             }
         });
+
+        // Bridge exposed as window.CamCoreEQNative -- the same pattern the sibling
+        // TomeRoam project device-proved (its AppBridge). Deliberately tiny: only
+        // @JavascriptInterface methods are reachable from the page, and the page
+        // FEATURE-DETECTS it (window.CamCoreEQNative && CamCoreEQNative.updateApp), so
+        // an older shell simply shows no button -- no version arithmetic in the page,
+        // and no URL-scheme navigation for an old shell to trip over. Installed before
+        // loadUrl, so unlike the onPageFinished injection it exists at document start.
+        web.addJavascriptInterface(new AppBridge(), "CamCoreEQNative");
 
         FrameLayout root = new FrameLayout(this);
         root.addView(web, new FrameLayout.LayoutParams(
@@ -117,6 +129,19 @@ public class MainActivity extends Activity {
                         + " downloaded - restart the app to use it", Toast.LENGTH_LONG).show();
             }
         }));
+    }
+
+    // Only @JavascriptInterface methods are reachable from JS. Kept intentionally tiny.
+    private final class AppBridge {
+        @android.webkit.JavascriptInterface
+        public int nativeVersion() { return WebUpdater.NATIVE_VERSION; }
+
+        // The Settings "Update app" button: download the latest signed APK and hand it
+        // to the system installer. The user's tap is the consent.
+        @android.webkit.JavascriptInterface
+        public void updateApp() {
+            runOnUiThread(() -> ApkUpdater.startUpdate(MainActivity.this));
+        }
     }
 
     @Override

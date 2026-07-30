@@ -19,9 +19,15 @@ NODE="$(command -v node || echo /c/Users/nzilb/tools/node-dist/node.exe)"
   exit 1
 }
 
-# 2. Every file the player invokes as a program must be committed executable.
-#    A non-executable CGI fails at RUNTIME (busybox httpd just refuses it), and a
-#    non-executable early-squeeze.sh re-arms the loud boot buzz.
+# 2. The page must PARSE. One inline script block means one SyntaxError ships a
+#    completely dead app (happened: a sed-eaten backslash in a regex, build b213).
+"$NODE" "$root/tools/check-page-parses.mjs" || {
+  echo ""
+  echo "pre-commit: page-parse gate FAILED - commit refused."
+  exit 1
+}
+
+# 3. Every file the player invokes as a program must be committed executable.
 sh "$root/tools/check-repo-modes.sh" || {
   echo ""
   echo "pre-commit: repo file-mode gate FAILED - commit refused."
