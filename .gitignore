@@ -3,3 +3,12 @@ android/build/
 *.idsig
 keystore-password.txt
 *.keystore
+
+# Runtime data from a real player. On the device these live in the SAME directory
+# as the code, so a copy-back would otherwise import listening metadata and
+# network settings into a public repo. The pre-commit scan blocks them as well.
+log.json
+state.json
+presets/*.json
+camcoreeq.conf
+pcp.cfg
