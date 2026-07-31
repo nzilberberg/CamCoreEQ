@@ -180,7 +180,12 @@
   /* Transport cluster: the accent border IS the resting (up) state -- with the default
      gray var(--line2) border these read as deactivated. User-chosen design. */
   .transport{display:inline-flex;gap:4px;margin-left:10px}
-  .tbtn{font-size:15px;line-height:1;padding:3px 9px;border-color:var(--accent)}
+  .tbtn{font-size:15px;line-height:1;padding:3px 9px;border-color:var(--accent);display:inline-flex;align-items:center;justify-content:center}
+  /* MUST override the global `svg{width:100%;height:auto}` rule above, or an inline icon
+     stretches to the button's content width. fill:currentColor makes every icon exactly
+     the button text colour -- the reason these are paths and not characters is that a
+     character can be substituted by an emoji font and a path cannot. */
+  .tbtn svg{width:15px;height:15px;display:block;fill:currentColor;flex:0 0 auto}
   /* A tapped button must return to exactly that up state on release. Engines keep
      :focus on a tapped button (and some match :focus-visible for taps too), which
      left a STUCK UA focus ring stacked on the border. Suppress the ring for POINTER
@@ -355,13 +360,16 @@
     <div id="brStack" style="position:absolute;left:8px;top:0;display:flex;flex-direction:column;align-items:center;gap:6px">
       <img id="albumArt" alt="" style="display:none;width:110px;height:110px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">
       <span class="transport" style="margin:0;justify-content:center">
-        <!-- &#xFE0E; (variation selector 15) forces TEXT presentation: U+23EE/23F8/23ED
-             default to colored EMOJI glyphs on Android, which is how the pause icon
-             once rendered orange while play stayed monochrome. Every glyph write must
-             carry it -- the JS sites that swap play/pause do too. -->
-        <button id="tPrev" class="sm tbtn" title="previous track">&#9198;&#xFE0E;</button>
-        <button id="tPlay" class="sm tbtn" title="play / pause">&#9654;&#xFE0E;</button>
-        <button id="tNext" class="sm tbtn" title="next track">&#9197;&#xFE0E;</button>
+        <!-- INLINE SVG, not characters. U+23EE/23F8/23ED default to colour EMOJI on
+             Android and the pause glyph rendered orange with a background; the text
+             presentation selector (U+FE0E) did NOT override it on the device. A font can
+             always substitute a character -- it cannot substitute a path. These use
+             fill:currentColor so all four match the button text colour exactly, and
+             carry no background of their own. Icons are defined once in window.EQ_ICON
+             so the JS that swaps play/pause cannot drift from this markup. -->
+        <button id="tPrev" class="sm tbtn" title="previous track"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2.4v12H6zM19 6v12L9.6 12z"/></svg></button>
+        <button id="tPlay" class="sm tbtn" title="play / pause"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l11.5-7z"/></svg></button>
+        <button id="tNext" class="sm tbtn" title="next track"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.6 6H18v12h-2.4zM5 6v12l9.4-6z"/></svg></button>
       </span>
     </div>
     <div id="xfCard" class="xfcard">
@@ -465,7 +473,7 @@
     </div>
     <div id="statusPanels" class="spanels" style="margin-top:0"></div>
   </div>
-  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b220 · foreground re-check moved to the WEB layer (visibilitychange), so it reaches every shell without an APK · b219 · a running app now notices new builds (90s foreground re-check + a Check-now button), and any stale client is told so by comparing against the build the player serves · b218 · transport cluster: accent-blue border is the resting state (gray read as disabled), glyphs forced to TEXT presentation (pause rendered as orange emoji on Android), and a tap no longer leaves a stuck focus ring (pointer-focus outline suppressed, handlers blur on click) · b217 · fixed the b216 flip-flop: optimistic glyph now HOLDS until a status snapshot requested AFTER the tap arrives (the 1s render loop was repainting stale state over it) · b216 · play/pause latency fix: LMS port cached after first probe (a firewall-dropped probe of the idle port cost ~1s on EVERY transport/status call), optimistic glyph + early confirm poll · b215 · web updates apply IN PLACE at launch (no restart toast); a build published mid-session lights an Apply-update button in Settings · b214 · Settings gains an App section: shell + web version and an on-demand "Update app" button (camcoreeq://update, shell v5+) · b213 · a WebView with no injected shell version now labels itself "OLD shell (pre-v3)" instead of masquerading as a browser · b212 · viewport declared as the 980px design width, so every client lays out like a desktop browser and scales to fit (the measured app-vs-Firefox divergence) · b211 · native self-update: the app now downloads and installs a newer APK itself (one tap), required updates route automatically · b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
+  <div id="bld" style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;padding-bottom:4px" title="build tag - confirm you're on the latest">b221 · transport icons are inline SVG paths (currentColor, no background) — an emoji font was substituting the pause character and rendering it orange · b220 · foreground re-check moved to the WEB layer (visibilitychange), so it reaches every shell without an APK · b219 · a running app now notices new builds (90s foreground re-check + a Check-now button), and any stale client is told so by comparing against the build the player serves · b218 · transport cluster: accent-blue border is the resting state (gray read as disabled), glyphs forced to TEXT presentation (pause rendered as orange emoji on Android), and a tap no longer leaves a stuck focus ring (pointer-focus outline suppressed, handlers blur on click) · b217 · fixed the b216 flip-flop: optimistic glyph now HOLDS until a status snapshot requested AFTER the tap arrives (the 1s render loop was repainting stale state over it) · b216 · play/pause latency fix: LMS port cached after first probe (a firewall-dropped probe of the idle port cost ~1s on EVERY transport/status call), optimistic glyph + early confirm poll · b215 · web updates apply IN PLACE at launch (no restart toast); a build published mid-session lights an Apply-update button in Settings · b214 · Settings gains an App section: shell + web version and an on-demand "Update app" button (camcoreeq://update, shell v5+) · b213 · a WebView with no injected shell version now labels itself "OLD shell (pre-v3)" instead of masquerading as a browser · b212 · viewport declared as the 980px design width, so every client lays out like a desktop browser and scales to fit (the measured app-vs-Firefox divergence) · b211 · native self-update: the app now downloads and installs a newer APK itself (one tap), required updates route automatically · b210 · Settings: "Send diagnostics to player" writes a client snapshot (viewport, geometry, versions) to the Output Log, readable without copy-paste · b209 · fixed a stale downloaded web copy shadowing a newer bundled one after an APK update; Diagnostics now shows the Client shell version · b208 · Android viewport parity (WebView was ignoring the viewport meta) + viewport metrics in Diagnostics · b207 · renamed to CamCoreEQ; player address resolved from the serving host with a first-run prompt + Settings override (no hardcoded IP) · b206 · imported-biquads panel nested inside the graph panel under crossfeed (xfcard style) · b205 · bypass also grays/disables the imported-biquads panel (off in both modes) · b204 · enlarged the gear glyph (18px) so it fills the button · b203 · hamburger → gear icon that opens Settings directly (dropdown + About retired) · b202 · retired the inline #msg hint spot entirely — all transient hints now go to the Output Log · b199 bypass polish: band-select box grays+disables (stays selected); A/B keeps bypass engaged; Level Match disabled; L/R mute buttons gray in Passthrough</div>
 </div>
 
 <script>
@@ -489,6 +497,17 @@ window.EQ_HOST = (function () {
 })();
 window.EQ_CGI = "http://" + window.EQ_HOST + ":8080/cgi-bin/";
 window.EQ_WS  = "ws://" + window.EQ_HOST + ":1234";
+
+// Transport icons, defined ONCE. Both IIFE scopes swap the play/pause icon, and this
+// file's two scopes share only through window.*, so a single definition here is the only
+// way the two call sites cannot drift apart -- and the markup above uses the same paths.
+// SVG rather than characters because U+23F8 rendered as an orange emoji on Android and
+// the text-presentation selector did not override it: a font can substitute a character,
+// never a path.
+window.EQ_ICON = {
+  play:  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l11.5-7z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 5h3.6v14H7.5zM12.9 5h3.6v14h-3.6z"/></svg>'
+};
 
 // Viewport metrics for the Diagnostics panel. On window because the status-panel scope
 // that renders it cannot see values declared in the editor scope.
@@ -1360,7 +1379,7 @@ window.EQ_setHost = function (h) {
       window.__optAt=Date.now();
       window.__playMode=window.__optMode;
       var tp=document.getElementById("tPlay");
-      if(tp)tp.innerHTML=(c==="play")?"&#9208;&#xFE0E;":"&#9654;&#xFE0E;";   // FE0E = text presentation, else Android renders the pause as an orange emoji
+      if(tp)tp.innerHTML=(c==="play")?window.EQ_ICON.pause:window.EQ_ICON.play;   // SVG paths: an emoji font cannot substitute them
     }
     fetch(CMD_URL+"?c="+c).then(function(){
       if(window.__pollNow)setTimeout(window.__pollNow,250);
@@ -2034,7 +2053,7 @@ window.EQ_setHost = function (h) {
       if(sysReqAt>window.__optAt || Date.now()-window.__optAt>5000) window.__optMode=null;
       else _m=window.__optMode;
     }
-    window.__playMode=_m; var _tp=document.getElementById("tPlay"); if(_tp)_tp.innerHTML=(_m==="play")?"&#9208;&#xFE0E;":"&#9654;&#xFE0E;";   // reflect play/pause on the transport button; FE0E keeps it TEXT, not orange emoji
+    window.__playMode=_m; var _tp=document.getElementById("tPlay"); if(_tp)_tp.innerHTML=(_m==="play")?window.EQ_ICON.pause:window.EQ_ICON.play;   // reflect play/pause on the transport button (shared SVG defs, so this cannot drift from the markup)
     var eng=(dsp.state==="Running"||sys.cdsp), bypOn=!!(window.__bypass&&window.__bypass!=="off"), codec=codecName(SG.type);
     npTick(L.time);updateNpBox(SG,L,codec,srcBr);   // feed the album-art hover box from the same computed fields (runs every 1s → elapsed ticks)
     if(window.__lastApply&&window.__lastApply!==lastApplySeen){lastApplySeen=window.__lastApply;clipBase=dsp.clipped||0;}
